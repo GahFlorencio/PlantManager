@@ -3,17 +3,19 @@ import {
     StyleSheet,
     View,
     Text,
-    Image
+    Image,
+    Alert
 } from 'react-native'
 import { Header } from '../components/Header';
 import colors from '../styles/colors';
 import waterdrop from '../assets/waterdrop.png'
-import { FlatList } from 'react-native-gesture-handler';
-import { loadPlant, PlantProps } from '../libs/storage';
+import { FlatList, ScrollView } from 'react-native-gesture-handler';
+import { loadPlant, PlantProps, removePlant, StoragePlantProps } from '../libs/storage';
 import { formatDistance } from 'date-fns';
 import { pt } from 'date-fns/locale';
 import fonts from '../styles/fonts';
 import { PlantCardSecundary } from '../components/PlantCardSecundary';
+import { Load } from '../components/Load';
 
 export function MyPlants() {
     const [myPlants, setMyPlants] = useState<PlantProps[]>();
@@ -22,9 +24,6 @@ export function MyPlants() {
 
     async function loadStorageData() {
         const plantsStoraged = await loadPlant()
-
-        console.log(plantsStoraged[0])
-
         const nextTime = formatDistance(
             new Date(plantsStoraged[0].dateTimeNotification).getTime(),
             new Date().getTime(),
@@ -37,12 +36,40 @@ export function MyPlants() {
 
         setLoading(false)
     }
+
+    async function handleRemove(plant: PlantProps) {
+        Alert.alert('Remover', `Deseja remover a ${plant.name}?`, [
+            {
+                text: 'Não 🙏',
+                style: 'cancel'
+            },
+            {
+                text: 'Sim 😢',
+                onPress: async () => {
+                    try {
+                        await removePlant(plant.id);
+
+                        setMyPlants((oldData) => oldData.filter((item) => item.id !== plant.id))
+
+                    } catch (error) {
+                        Alert.alert('Não foi possivel remover! 😢')
+                    }
+
+                },
+                style: 'default'
+            }
+        ])
+
+    }
     useEffect(() => {
         loadStorageData()
     }, [])
 
+    if (loading)
+        return <Load />
 
     return (
+
         <View style={styles.container}>
             <Header />
             <View style={styles.spotlight}>
@@ -65,15 +92,18 @@ export function MyPlants() {
                     data={myPlants}
                     keyExtractor={(plant) => String(plant.id)}
                     renderItem={({ item }) =>
-                        <PlantCardSecundary data={item} />
+                        <PlantCardSecundary
+                            data={item}
+                            handleRemove={() => { handleRemove(item) }}
+                        />
                     }
                     showsVerticalScrollIndicator={false}
                     contentContainerStyle={{ flex: 1 }}
 
                 />
-
             </View>
         </View>
+
     )
 }
 
